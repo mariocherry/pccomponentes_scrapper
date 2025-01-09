@@ -1,3 +1,3 @@
-SENDER_EMAIL = "sender@email.com"
-RECEIVER_EMAIL = "rceiver@email.com"
-EMAIL_PASSWORD = "dummypass"
+SENDER_EMAIL = "marioguinda@gmail.com"
+RECEIVER_EMAIL = "marioguinda@gmail.com"
+EMAIL_PASSWORD = "nuzs jqwq nnpm jmjy"

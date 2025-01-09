@@ -1,46 +1,55 @@
 import smtplib
 import cloudscraper
 import re
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import time
 from scrapper_secrets import SENDER_EMAIL, RECEIVER_EMAIL, EMAIL_PASSWORD
 
-TIME_BETWEEN_REQUESTS = 20
 TIME_BETWEEN_TRIES = 20
+
+logging.basicConfig(filename='log.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', encoding='utf-8')
+logger = logging.getLogger(__name__)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+logger.addHandler(console_handler)
 
 def check_prices():
     products = []
 
-    rtx_4080_price = check_custom_price(
-        item_name='RTX 4080',
-        url='https://www.pccomponentes.com/tarjetas-graficas/geforce-rtx-4080-super',
-        name_pattern = r'<h3[^>]*data-e2e="title-card"[^>]*>(.*?)</h3>',
-        price_pattern = r'<span[^>]*data-e2e="price-card"[^>]*>([\d.,]+)€</span>'
-    )
+    product_list = [
+        {
+            'item_name': 'RTX 4080',
+            'url': 'https://www.pccomponentes.com/tarjetas-graficas/geforce-rtx-4080-super',
+            'name_pattern': r'<h3[^>]*data-e2e="title-card"[^>]*>(.*?)</h3>',
+            'price_pattern': r'<span[^>]*data-e2e="price-card"[^>]*>([\d.,]+)€</span>'
+        },
+        {
+            'item_name': 'RAM DDR5',
+            'url': 'https://www.pccomponentes.com/memorias-ram/6400-mhz/ddr5/kit-2x32gb',
+            'name_pattern': r'<h3[^>]*data-e2e="title-card"[^>]*>(.*?)</h3>',
+            'price_pattern': r'<span[^>]*data-e2e="price-card"[^>]*>([\d.,]+)€</span>'
+        },
+        {
+            'item_name': 'Fuente de alimentación 1000W Platinum',  
+            'url': 'https://www.pccomponentes.com/fuentes-alimentacion/1000w/80-plus-platinum',
+            'name_pattern': r'<h3[^>]*data-e2e="title-card"[^>]*>(.*?)</h3>',
+            'price_pattern': r'<span[^>]*data-e2e="price-card"[^>]*>([\d.,]+)€</span>'
+        },
+    ]
 
-    if rtx_4080_price:
-        products.append(rtx_4080_price)
+    for product in product_list:
+        product_price = check_custom_price(**product)
 
-    print(f"Esperando {TIME_BETWEEN_REQUESTS} segundos antes de la siguiente petición...")
-    time.sleep(TIME_BETWEEN_REQUESTS)
+        if product_price:
+            products.append(product_price)
 
-    ram_ddr5_price = check_custom_price(
-        item_name='RAM DDR5',
-        url='https://www.pccomponentes.com/memorias-ram/6400-mhz/ddr5/kit-2x32gb',
-        name_pattern=r'<h3[^>]*data-e2e="title-card"[^>]*>(.*?)</h3>',
-        price_pattern=r'<span[^>]*data-e2e="price-card"[^>]*>([\d.,]+)€</span>'
-    )
-
-    if ram_ddr5_price:
-        products.append(ram_ddr5_price)
-
-    print(f"Productos encontrados: {products}")
+    logger.info(f"Productos encontrados: {products}")
     
     if products:
         send_email(products)
     else:
-        print("No se encontraron productos para enviar por email.")
+        logger.info("No se encontraron productos para enviar por email.")
     
 def check_custom_price(item_name: str, url: str, name_pattern: str, price_pattern: str):
     retries = 2
@@ -58,19 +67,20 @@ def check_custom_price(item_name: str, url: str, name_pattern: str, price_patter
                     numeric_prices = [float(price.replace('.', '').replace(',', '.')) for price in prices]
 
                     products = list(zip(names, numeric_prices))
-                    print(f"Productos encontrados para {item_name}: {products}")
+                    logger.info(f"Productos encontrados para {item_name}: {products}")
                     retry = False
 
                     best_product = min(products, key=lambda x: x[1])
-                    print(f"El mejor precio para {item_name} es: {best_product[1]}€ para el producto: {best_product[0]}")
+                    logger.info(f"El mejor precio para {item_name} es: {best_product[1]}€ para el producto: {best_product[0]}")
                     return best_product
                 else:
-                    print(f"No se encontraron productos o precios para {item_name}.")
+                    logger.info(f"No se encontraron productos o precios para {item_name}.")
                     if retry:
-                        print(f"Reintentando... Esperando {TIME_BETWEEN_TRIES} segundos antes de la siguiente petición...")
+                        logger.info(f"Reintentando... Esperando {TIME_BETWEEN_TRIES} segundos antes de la siguiente petición...")
+                        
                     return None
             except Exception as e:
-                print(f"Error obteniendo los precios de {item_name}: {e}")
+                logger.error(f"Error obteniendo los precios de {item_name}: {e}")
                 return None
         
     
@@ -98,10 +108,11 @@ def send_email(products):
         server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, message.as_string())
         server.quit()
         
-        print("Correo enviado correctamente.")
+        logger.info("Correo enviado correctamente.")
     except Exception as e:
-        print(f"Error al enviar el correo: {e}")
+        logger.error(f"Error al enviar el correo: {e}")
 
 
 if __name__ == "__main__":
     check_prices()
+
