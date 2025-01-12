@@ -77,8 +77,6 @@ def check_custom_price(item_name: str, url: str, name_pattern: str, price_patter
                     logger.info(f"No se encontraron productos o precios para {item_name}.")
                     if retry:
                         logger.info(f"Reintentando... Esperando {TIME_BETWEEN_TRIES} segundos antes de la siguiente petición...")
-                        
-                    return None
             except Exception as e:
                 logger.error(f"Error obteniendo los precios de {item_name}: {e}")
                 return None
